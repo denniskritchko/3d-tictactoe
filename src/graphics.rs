@@ -160,12 +160,14 @@ pub enum SoundEvent {
 #[derive(Resource)]
 pub struct GameSounds {
     pub enabled: bool,
+    pub move_place: Handle<AudioSource>,
 }
 
 pub fn setup_scene(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
     // Create materials
     let cube_materials = CubeMaterials {
@@ -298,9 +300,10 @@ pub fn setup_scene(
     commands.insert_resource(cube_materials);
     commands.insert_resource(game_meshes);
     
-    // Initialize sound system
+    // Initialize sound system with actual audio files
     let game_sounds = GameSounds {
         enabled: true,
+        move_place: asset_server.load("audio/place.mp3"),
     };
     commands.insert_resource(game_sounds);
 }
@@ -630,6 +633,7 @@ pub fn clear_animations_on_reset(
 }
 
 pub fn play_sound_effects(
+    mut commands: Commands,
     mut sound_events: EventReader<SoundEvent>,
     sounds: Res<GameSounds>,
 ) {
@@ -640,9 +644,12 @@ pub fn play_sound_effects(
     for event in sound_events.read() {
         match event {
             SoundEvent::MovePlace => {
-                // Play a pleasant "place" sound (mid-high frequency, satisfying click)
+                // Play the actual placement sound
                 info!("🔊 Move placed - playing satisfying placement sound");
-                // Future: Play actual audio file like "click.ogg" or generate 800Hz tone
+                commands.spawn(AudioBundle {
+                    source: sounds.move_place.clone(),
+                    settings: PlaybackSettings::DESPAWN,
+                });
             }
             SoundEvent::Hover => {
                 // Play a subtle hover sound (high frequency, quiet, brief)
