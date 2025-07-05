@@ -355,7 +355,7 @@ pub struct MCTSAi {
 impl MCTSAi {
     pub fn new() -> Self {
         Self {
-            simulations: 1000,
+            simulations: 2000, // Increased for better play
             exploration_param: 1.414, // sqrt(2)
         }
     }
@@ -370,8 +370,17 @@ impl MCTSAi {
             return None;
         }
 
-        // For simplicity, we'll use a basic evaluation approach
-        // In a full MCTS implementation, we'd need to properly handle the tree structure
+        // First, check if AI can win immediately
+        if let Some(winning_move) = self.find_winning_move(game_state, Player::AI) {
+            return Some(winning_move);
+        }
+
+        // Second, check if AI needs to block human from winning
+        if let Some(blocking_move) = self.find_winning_move(game_state, Player::Human) {
+            return Some(blocking_move);
+        }
+
+        // Use enhanced MCTS with strategic evaluation
         let mut best_move = None;
         let mut best_score = f64::NEG_INFINITY;
 
@@ -379,11 +388,12 @@ impl MCTSAi {
             let mut total_score = 0.0;
             
             // Run multiple simulations for this move
-            for _ in 0..100 {
+            let sims_per_move = self.simulations / (empty_positions.len().max(1) as u32);
+            for _ in 0..sims_per_move {
                 let mut sim_state = game_state.board;
                 sim_state[x][y][z] = CellState::AI;
                 
-                let winner = self.simulate_random_game(sim_state, Player::Human);
+                let winner = self.simulate_smart_game(sim_state, Player::Human);
                 let score = match winner {
                     Player::AI => 1.0,
                     Player::Human => -1.0,
@@ -391,14 +401,135 @@ impl MCTSAi {
                 total_score += score;
             }
 
-            let avg_score = total_score / 100.0;
-            if avg_score > best_score {
-                best_score = avg_score;
+            // Add strategic position evaluation
+            let position_value = self.evaluate_position(x, y, z, game_state);
+            let avg_score = total_score / sims_per_move as f64;
+            let final_score = avg_score + position_value;
+
+            if final_score > best_score {
+                best_score = final_score;
                 best_move = Some((x, y, z));
             }
         }
 
         best_move
+    }
+
+    // Find if a player can win on their next move
+    fn find_winning_move(&self, game_state: &GameState, player: Player) -> Option<(usize, usize, usize)> {
+        let empty_positions = game_state.get_empty_positions();
+        
+        for &(x, y, z) in &empty_positions {
+            let mut test_state = game_state.board;
+            match player {
+                Player::AI => test_state[x][y][z] = CellState::AI,
+                Player::Human => test_state[x][y][z] = CellState::Human,
+            }
+            
+            if MCTSAi::check_winner_for_state(&test_state).is_some() {
+                return Some((x, y, z));
+            }
+        }
+        
+        None
+    }
+
+    // Evaluate strategic value of a position
+    fn evaluate_position(&self, x: usize, y: usize, z: usize, game_state: &GameState) -> f64 {
+        let mut score = 0.0;
+        
+        // Center positions are more valuable
+        let center_distance = ((x as f64 - 1.0).abs() + (y as f64 - 1.0).abs() + (z as f64 - 1.0).abs()) / 3.0;
+        score += (1.0 - center_distance) * 0.1;
+        
+        // Corner positions have strategic value
+        if (x == 0 || x == 2) && (y == 0 || y == 2) && (z == 0 || z == 2) {
+            score += 0.05;
+        }
+        
+        // Count potential winning lines through this position
+        score += self.count_potential_lines(x, y, z, game_state) * 0.02;
+        
+        score
+    }
+
+    // Count how many winning lines pass through this position
+    fn count_potential_lines(&self, x: usize, y: usize, z: usize, game_state: &GameState) -> f64 {
+        let mut count = 0.0;
+        
+        // All possible lines through position (x, y, z)
+        let lines = [
+            // X-axis lines
+            [(0, y, z), (1, y, z), (2, y, z)],
+            // Y-axis lines  
+            [(x, 0, z), (x, 1, z), (x, 2, z)],
+            // Z-axis lines
+            [(x, y, 0), (x, y, 1), (x, y, 2)],
+        ];
+        
+        // Add diagonal lines if applicable
+        let mut diagonal_lines = Vec::new();
+        
+        // XY plane diagonals
+        if x == y {
+            diagonal_lines.push([(0, 0, z), (1, 1, z), (2, 2, z)]);
+        }
+        if x + y == 2 {
+            diagonal_lines.push([(0, 2, z), (1, 1, z), (2, 0, z)]);
+        }
+        
+        // XZ plane diagonals
+        if x == z {
+            diagonal_lines.push([(0, y, 0), (1, y, 1), (2, y, 2)]);
+        }
+        if x + z == 2 {
+            diagonal_lines.push([(0, y, 2), (1, y, 1), (2, y, 0)]);
+        }
+        
+        // YZ plane diagonals
+        if y == z {
+            diagonal_lines.push([(x, 0, 0), (x, 1, 1), (x, 2, 2)]);
+        }
+        if y + z == 2 {
+            diagonal_lines.push([(x, 0, 2), (x, 1, 1), (x, 2, 0)]);
+        }
+        
+        // 3D space diagonals
+        if x == y && y == z {
+            diagonal_lines.push([(0, 0, 0), (1, 1, 1), (2, 2, 2)]);
+        }
+        if x == y && y + z == 2 {
+            diagonal_lines.push([(0, 0, 2), (1, 1, 1), (2, 2, 0)]);
+        }
+        if x + y == 2 && y == z {
+            diagonal_lines.push([(0, 2, 0), (1, 1, 1), (2, 0, 2)]);
+        }
+        if x + y == 2 && y + z == 2 {
+            diagonal_lines.push([(0, 2, 2), (1, 1, 1), (2, 0, 0)]);
+        }
+        
+        // Check all lines for potential
+        for line in lines.iter().chain(diagonal_lines.iter()) {
+            if line.contains(&(x, y, z)) {
+                let mut ai_count = 0;
+                let mut human_count = 0;
+                
+                for &(lx, ly, lz) in line {
+                    match game_state.board[lx][ly][lz] {
+                        CellState::AI => ai_count += 1,
+                        CellState::Human => human_count += 1,
+                        CellState::Empty => {},
+                    }
+                }
+                
+                // Line is valuable if it's not blocked by opponent
+                if human_count == 0 {
+                    count += 1.0 + ai_count as f64; // More valuable if AI already has pieces in line
+                }
+            }
+        }
+        
+        count
     }
 
     fn simulate_random_game(&self, mut state: [[[CellState; 3]; 3]; 3], mut current_player: Player) -> Player {
@@ -426,6 +557,100 @@ impl MCTSAi {
                 Player::AI => Player::Human,
             };
         }
+    }
+
+    // Simulate game with some strategic intelligence
+    fn simulate_smart_game(&self, mut state: [[[CellState; 3]; 3]; 3], mut current_player: Player) -> Player {
+        let mut rng = rand::thread_rng();
+        
+        loop {
+            if let Some(winner) = MCTSAi::check_winner_for_state(&state) {
+                return winner;
+            }
+
+            let moves = MCTSAi::get_possible_moves_for_state(&state);
+            if moves.is_empty() {
+                // Draw - return random player for simplicity
+                return if rng.gen_bool(0.5) { Player::Human } else { Player::AI };
+            }
+
+            // Try to make smarter moves during simulation
+            let chosen_move = if rng.gen_bool(0.7) { // 70% chance for smart move
+                self.choose_smart_move(&state, current_player, &moves)
+            } else {
+                // 30% chance for random move to add variety
+                moves[rng.gen_range(0..moves.len())]
+            };
+
+            let (x, y, z) = chosen_move;
+            match current_player {
+                Player::Human => state[x][y][z] = CellState::Human,
+                Player::AI => state[x][y][z] = CellState::AI,
+            }
+
+            current_player = match current_player {
+                Player::Human => Player::AI,
+                Player::AI => Player::Human,
+            };
+        }
+    }
+
+    // Choose a strategic move during simulation
+    fn choose_smart_move(&self, state: &[[[CellState; 3]; 3]; 3], player: Player, moves: &[(usize, usize, usize)]) -> (usize, usize, usize) {
+        let mut rng = rand::thread_rng();
+        
+        // First priority: win immediately if possible
+        for &(x, y, z) in moves {
+            let mut test_state = *state;
+            match player {
+                Player::AI => test_state[x][y][z] = CellState::AI,
+                Player::Human => test_state[x][y][z] = CellState::Human,
+            }
+            
+            if MCTSAi::check_winner_for_state(&test_state).is_some() {
+                return (x, y, z);
+            }
+        }
+        
+        // Second priority: block opponent from winning
+        let opponent = match player {
+            Player::AI => Player::Human,
+            Player::Human => Player::AI,
+        };
+        
+        for &(x, y, z) in moves {
+            let mut test_state = *state;
+            match opponent {
+                Player::AI => test_state[x][y][z] = CellState::AI,
+                Player::Human => test_state[x][y][z] = CellState::Human,
+            }
+            
+            if MCTSAi::check_winner_for_state(&test_state).is_some() {
+                return (x, y, z);
+            }
+        }
+        
+        // Third priority: prefer center and strategic positions
+        let mut scored_moves: Vec<_> = moves.iter().map(|&(x, y, z)| {
+            let mut score = 0.0;
+            
+            // Center preference
+            let center_distance = ((x as f64 - 1.0).abs() + (y as f64 - 1.0).abs() + (z as f64 - 1.0).abs()) / 3.0;
+            score += (1.0 - center_distance) * 10.0;
+            
+            // Corner preference
+            if (x == 0 || x == 2) && (y == 0 || y == 2) && (z == 0 || z == 2) {
+                score += 5.0;
+            }
+            
+            ((x, y, z), score)
+        }).collect();
+        
+        scored_moves.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        
+        // Pick from top 3 moves with some randomness
+        let top_moves = std::cmp::min(3, scored_moves.len());
+        scored_moves[rng.gen_range(0..top_moves)].0
     }
 
     fn check_winner_for_state(state: &[[[CellState; 3]; 3]; 3]) -> Option<Player> {

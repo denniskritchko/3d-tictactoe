@@ -2,12 +2,72 @@ use bevy::prelude::*;
 use bevy::input::mouse::MouseMotion;
 use crate::game::{GameState, Player, CellState};
 
+// Helper function for ray-box intersection
+fn ray_box_intersection(ray_origin: Vec3, ray_dir: Vec3, box_min: Vec3, box_max: Vec3) -> Option<f32> {
+    let mut tmin = (box_min.x - ray_origin.x) / ray_dir.x;
+    let mut tmax = (box_max.x - ray_origin.x) / ray_dir.x;
+    
+    if tmin > tmax {
+        std::mem::swap(&mut tmin, &mut tmax);
+    }
+    
+    let mut tymin = (box_min.y - ray_origin.y) / ray_dir.y;
+    let mut tymax = (box_max.y - ray_origin.y) / ray_dir.y;
+    
+    if tymin > tymax {
+        std::mem::swap(&mut tymin, &mut tymax);
+    }
+    
+    if tmin > tymax || tymin > tmax {
+        return None;
+    }
+    
+    if tymin > tmin {
+        tmin = tymin;
+    }
+    
+    if tymax < tmax {
+        tmax = tymax;
+    }
+    
+    let mut tzmin = (box_min.z - ray_origin.z) / ray_dir.z;
+    let mut tzmax = (box_max.z - ray_origin.z) / ray_dir.z;
+    
+    if tzmin > tzmax {
+        std::mem::swap(&mut tzmin, &mut tzmax);
+    }
+    
+    if tmin > tzmax || tzmin > tmax {
+        return None;
+    }
+    
+    if tzmin > tmin {
+        tmin = tzmin;
+    }
+    
+    if tzmax < tmax {
+        tmax = tzmax;
+    }
+    
+    // Return the closest intersection point
+    if tmin > 0.0 {
+        Some(tmin)
+    } else if tmax > 0.0 {
+        Some(tmax)
+    } else {
+        None
+    }
+}
+
 #[derive(Component)]
 pub struct CubeMarker {
     pub x: usize,
     pub y: usize,
     pub z: usize,
 }
+
+#[derive(Component)]
+pub struct HoveredCube;
 
 #[derive(Component)]
 pub struct CameraController {
@@ -23,6 +83,7 @@ pub struct CubeMaterials {
     pub human: Handle<StandardMaterial>,
     pub ai: Handle<StandardMaterial>,
     pub selected: Handle<StandardMaterial>,
+    pub hovered: Handle<StandardMaterial>,
 }
 
 #[derive(Resource)]
@@ -52,6 +113,11 @@ pub fn setup_scene(
         }),
         selected: materials.add(StandardMaterial {
             base_color: Color::srgb(0.8, 0.8, 0.2),
+            ..default()
+        }),
+        hovered: materials.add(StandardMaterial {
+            base_color: Color::srgba(0.6, 0.6, 0.6, 0.8),
+            alpha_mode: AlphaMode::Blend,
             ..default()
         }),
     };
@@ -119,7 +185,7 @@ pub fn setup_scene(
     // UI Text
     commands.spawn(
         TextBundle::from_section(
-            "3D Tic-Tac-Toe\nClick on cubes to play!\nWASD + Mouse to rotate camera\nR to reset game",
+            "3D Tic-Tac-Toe\nHover over cubes to highlight them\nClick highlighted cubes to play!\nWASD + Mouse to rotate camera\nR to reset game",
             TextStyle {
                 font_size: 20.0,
                 color: Color::WHITE,
@@ -160,12 +226,76 @@ pub fn setup_scene(
 #[derive(Component)]
 pub struct GameStatusText;
 
+pub fn handle_hover(
+    windows: Query<&Window>,
+    camera_query: Query<(&Camera, &GlobalTransform)>,
+    cubes_query: Query<(Entity, &GlobalTransform, &CubeMarker), Without<HoveredCube>>,
+    hovered_cubes: Query<Entity, With<HoveredCube>>,
+    mut commands: Commands,
+    game_state: Res<GameState>,
+) {
+    if game_state.game_over || game_state.current_player != Player::Human {
+        // Remove all hover highlights when it's not the player's turn
+        for entity in hovered_cubes.iter() {
+            commands.entity(entity).remove::<HoveredCube>();
+        }
+        return;
+    }
+
+    let window = windows.single();
+    if let Some(cursor_position) = window.cursor_position() {
+        let (camera, camera_transform) = camera_query.single();
+        
+        // Convert screen coordinates to world ray
+        if let Some(ray) = camera.viewport_to_world(camera_transform, cursor_position) {
+            let ray_origin = ray.origin;
+            let ray_dir = *ray.direction;
+            
+            let mut closest_cube = None;
+            let mut closest_distance = f32::INFINITY;
+            
+            // Check intersection with all cubes
+            for (entity, cube_transform, cube_marker) in cubes_query.iter() {
+                // Only check empty cubes
+                if game_state.board[cube_marker.x][cube_marker.y][cube_marker.z] != CellState::Empty {
+                    continue;
+                }
+                
+                let cube_pos = cube_transform.translation();
+                let cube_size = 0.4; // Half the cube size (0.8 / 2)
+                let box_min = cube_pos - Vec3::splat(cube_size);
+                let box_max = cube_pos + Vec3::splat(cube_size);
+                
+                if let Some(distance) = ray_box_intersection(ray_origin, ray_dir, box_min, box_max) {
+                    if distance < closest_distance {
+                        closest_distance = distance;
+                        closest_cube = Some(entity);
+                    }
+                }
+            }
+            
+            // Remove hover from all cubes
+            for entity in hovered_cubes.iter() {
+                commands.entity(entity).remove::<HoveredCube>();
+            }
+            
+            // Add hover to the closest cube
+            if let Some(entity) = closest_cube {
+                commands.entity(entity).insert(HoveredCube);
+            }
+        }
+    } else {
+        // Remove all hover highlights when cursor is not over the window
+        for entity in hovered_cubes.iter() {
+            commands.entity(entity).remove::<HoveredCube>();
+        }
+    }
+}
+
 pub fn handle_input(
     buttons: Res<ButtonInput<MouseButton>>,
     keyboard: Res<ButtonInput<KeyCode>>,
-    windows: Query<&Window>,
-    camera_query: Query<(&Camera, &GlobalTransform)>,
-    cubes_query: Query<(&GlobalTransform, &CubeMarker)>,
+    hovered_cubes: Query<&CubeMarker, With<HoveredCube>>,
     mut game_state: ResMut<GameState>,
 ) {
     if keyboard.just_pressed(KeyCode::KeyR) {
@@ -178,31 +308,11 @@ pub fn handle_input(
     }
 
     if buttons.just_pressed(MouseButton::Left) {
-        let window = windows.single();
-        if let Some(cursor_position) = window.cursor_position() {
-            let (camera, camera_transform) = camera_query.single();
-            
-            // Convert screen coordinates to world ray
-            if let Some(ray) = camera.viewport_to_world(camera_transform, cursor_position) {
-                let mut closest_cube = None;
-                let mut closest_distance = f32::INFINITY;
-
-                // Check intersection with all cubes
-                for (cube_transform, cube_marker) in cubes_query.iter() {
-                    let cube_pos = cube_transform.translation();
-                    let distance_to_cube = ray.origin.distance(cube_pos);
-                    
-                    // Simple distance-based selection (could be improved with proper ray-box intersection)
-                    if distance_to_cube < closest_distance {
-                        closest_distance = distance_to_cube;
-                        closest_cube = Some((cube_marker.x, cube_marker.y, cube_marker.z));
-                    }
-                }
-
-                if let Some((x, y, z)) = closest_cube {
-                    game_state.make_move(x, y, z);
-                }
-            }
+        // Only allow selection of hovered cubes for accurate hit detection
+        for cube_marker in hovered_cubes.iter() {
+            // Make the move on the hovered cube
+            game_state.make_move(cube_marker.x, cube_marker.y, cube_marker.z);
+            break; // Only one cube can be hovered at a time
         }
     }
 }
@@ -259,20 +369,18 @@ pub fn rotate_camera(
 }
 
 pub fn update_cube_materials(
-    mut cube_query: Query<(&mut Handle<StandardMaterial>, &CubeMarker)>,
+    mut cube_query: Query<(&mut Handle<StandardMaterial>, &CubeMarker, Option<&HoveredCube>)>,
     game_state: Res<GameState>,
     materials: Res<CubeMaterials>,
 ) {
-    if !game_state.is_changed() {
-        return;
-    }
-
-    for (mut material, cube_marker) in cube_query.iter_mut() {
+    for (mut material, cube_marker, hovered) in cube_query.iter_mut() {
         let cell_state = game_state.board[cube_marker.x][cube_marker.y][cube_marker.z];
         
         *material = match cell_state {
             CellState::Empty => {
-                if Some((cube_marker.x, cube_marker.y, cube_marker.z)) == game_state.selected_cube {
+                if hovered.is_some() && game_state.current_player == Player::Human && !game_state.game_over {
+                    materials.hovered.clone()
+                } else if Some((cube_marker.x, cube_marker.y, cube_marker.z)) == game_state.selected_cube {
                     materials.selected.clone()
                 } else {
                     materials.empty.clone()
@@ -315,7 +423,7 @@ pub fn check_game_over(
                     text.sections[0].style.color = Color::srgb(0.2, 0.7, 0.2);
                 }
                 Player::AI => {
-                    text.sections[0].value = "AI thinking...".to_string();
+                    text.sections[0].value = "Smart AI calculating...".to_string();
                     text.sections[0].style.color = Color::srgb(0.7, 0.2, 0.2);
                 }
             }
@@ -331,11 +439,11 @@ pub fn ai_move_system(
         return;
     }
 
-    // Add a small delay to make AI moves visible
+    // Add a delay to show AI is thinking
     static mut AI_TIMER: f32 = 0.0;
     unsafe {
         AI_TIMER += time.delta_seconds();
-        if AI_TIMER < 1.0 {
+        if AI_TIMER < 1.5 { // Longer delay to show AI is thinking harder
             return;
         }
         AI_TIMER = 0.0;

@@ -20,6 +20,7 @@ fn main() {
         .init_resource::<GameState>()
         .add_systems(Startup, setup_scene)
         .add_systems(Update, (
+            handle_hover,
             handle_input,
             rotate_camera,
             update_cube_materials,
