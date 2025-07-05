@@ -1,0 +1,10 @@
+/Users/denniskritchko/3d-tictactoe/target/debug/deps/bevy_audio-015c328c277591a0.d: /Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_audio-0.14.2/src/lib.rs /Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_audio-0.14.2/src/audio.rs /Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_audio-0.14.2/src/audio_output.rs /Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_audio-0.14.2/src/audio_source.rs /Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_audio-0.14.2/src/pitch.rs /Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_audio-0.14.2/src/sinks.rs
+
+/Users/denniskritchko/3d-tictactoe/target/debug/deps/libbevy_audio-015c328c277591a0.rmeta: /Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_audio-0.14.2/src/lib.rs /Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_audio-0.14.2/src/audio.rs /Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_audio-0.14.2/src/audio_output.rs /Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_audio-0.14.2/src/audio_source.rs /Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_audio-0.14.2/src/pitch.rs /Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_audio-0.14.2/src/sinks.rs
+
+/Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_audio-0.14.2/src/lib.rs:
+/Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_audio-0.14.2/src/audio.rs:
+/Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_audio-0.14.2/src/audio_output.rs:
+/Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_audio-0.14.2/src/audio_source.rs:
+/Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_audio-0.14.2/src/pitch.rs:
+/Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_audio-0.14.2/src/sinks.rs:

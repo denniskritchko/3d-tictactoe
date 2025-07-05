@@ -1,5 +1,4 @@
 use rand::Rng;
-use std::collections::HashMap;
 use crate::game::{GameState, Player, CellState};
 
 #[derive(Clone)]
@@ -388,7 +387,6 @@ impl MCTSAi {
                 let score = match winner {
                     Player::AI => 1.0,
                     Player::Human => -1.0,
-                    _ => 0.0, // This won't happen with our enum but keeping for completeness
                 };
                 total_score += score;
             }
@@ -407,11 +405,11 @@ impl MCTSAi {
         let mut rng = rand::thread_rng();
         
         loop {
-            if let Some(winner) = self.check_winner_for_state(&state) {
+            if let Some(winner) = MCTSAi::check_winner_for_state(&state) {
                 return winner;
             }
 
-            let moves = self.get_possible_moves_for_state(&state);
+            let moves = MCTSAi::get_possible_moves_for_state(&state);
             if moves.is_empty() {
                 // Draw - return random player for simplicity
                 return if rng.gen_bool(0.5) { Player::Human } else { Player::AI };
@@ -428,5 +426,114 @@ impl MCTSAi {
                 Player::AI => Player::Human,
             };
         }
+    }
+
+    fn check_winner_for_state(state: &[[[CellState; 3]; 3]; 3]) -> Option<Player> {
+        // Check all possible winning lines in 3D
+        // Lines along X axis
+        for y in 0..3 {
+            for z in 0..3 {
+                if MCTSAi::check_line_for_state(state, [(0, y, z), (1, y, z), (2, y, z)]) {
+                    return Some(MCTSAi::get_winner_from_line_for_state(state, [(0, y, z), (1, y, z), (2, y, z)]));
+                }
+            }
+        }
+
+        // Lines along Y axis
+        for x in 0..3 {
+            for z in 0..3 {
+                if MCTSAi::check_line_for_state(state, [(x, 0, z), (x, 1, z), (x, 2, z)]) {
+                    return Some(MCTSAi::get_winner_from_line_for_state(state, [(x, 0, z), (x, 1, z), (x, 2, z)]));
+                }
+            }
+        }
+
+        // Lines along Z axis
+        for x in 0..3 {
+            for y in 0..3 {
+                if MCTSAi::check_line_for_state(state, [(x, y, 0), (x, y, 1), (x, y, 2)]) {
+                    return Some(MCTSAi::get_winner_from_line_for_state(state, [(x, y, 0), (x, y, 1), (x, y, 2)]));
+                }
+            }
+        }
+
+        // Face diagonals on XY planes
+        for z in 0..3 {
+            if MCTSAi::check_line_for_state(state, [(0, 0, z), (1, 1, z), (2, 2, z)]) {
+                return Some(MCTSAi::get_winner_from_line_for_state(state, [(0, 0, z), (1, 1, z), (2, 2, z)]));
+            }
+            if MCTSAi::check_line_for_state(state, [(0, 2, z), (1, 1, z), (2, 0, z)]) {
+                return Some(MCTSAi::get_winner_from_line_for_state(state, [(0, 2, z), (1, 1, z), (2, 0, z)]));
+            }
+        }
+
+        // Face diagonals on XZ planes
+        for y in 0..3 {
+            if MCTSAi::check_line_for_state(state, [(0, y, 0), (1, y, 1), (2, y, 2)]) {
+                return Some(MCTSAi::get_winner_from_line_for_state(state, [(0, y, 0), (1, y, 1), (2, y, 2)]));
+            }
+            if MCTSAi::check_line_for_state(state, [(0, y, 2), (1, y, 1), (2, y, 0)]) {
+                return Some(MCTSAi::get_winner_from_line_for_state(state, [(0, y, 2), (1, y, 1), (2, y, 0)]));
+            }
+        }
+
+        // Face diagonals on YZ planes
+        for x in 0..3 {
+            if MCTSAi::check_line_for_state(state, [(x, 0, 0), (x, 1, 1), (x, 2, 2)]) {
+                return Some(MCTSAi::get_winner_from_line_for_state(state, [(x, 0, 0), (x, 1, 1), (x, 2, 2)]));
+            }
+            if MCTSAi::check_line_for_state(state, [(x, 0, 2), (x, 1, 1), (x, 2, 0)]) {
+                return Some(MCTSAi::get_winner_from_line_for_state(state, [(x, 0, 2), (x, 1, 1), (x, 2, 0)]));
+            }
+        }
+
+        // 3D diagonals (corner to corner)
+        if MCTSAi::check_line_for_state(state, [(0, 0, 0), (1, 1, 1), (2, 2, 2)]) {
+            return Some(MCTSAi::get_winner_from_line_for_state(state, [(0, 0, 0), (1, 1, 1), (2, 2, 2)]));
+        }
+        if MCTSAi::check_line_for_state(state, [(0, 0, 2), (1, 1, 1), (2, 2, 0)]) {
+            return Some(MCTSAi::get_winner_from_line_for_state(state, [(0, 0, 2), (1, 1, 1), (2, 2, 0)]));
+        }
+        if MCTSAi::check_line_for_state(state, [(0, 2, 0), (1, 1, 1), (2, 0, 2)]) {
+            return Some(MCTSAi::get_winner_from_line_for_state(state, [(0, 2, 0), (1, 1, 1), (2, 0, 2)]));
+        }
+        if MCTSAi::check_line_for_state(state, [(0, 2, 2), (1, 1, 1), (2, 0, 0)]) {
+            return Some(MCTSAi::get_winner_from_line_for_state(state, [(0, 2, 2), (1, 1, 1), (2, 0, 0)]));
+        }
+
+        None
+    }
+
+    fn check_line_for_state(state: &[[[CellState; 3]; 3]; 3], positions: [(usize, usize, usize); 3]) -> bool {
+        let cells = [
+            state[positions[0].0][positions[0].1][positions[0].2],
+            state[positions[1].0][positions[1].1][positions[1].2],
+            state[positions[2].0][positions[2].1][positions[2].2],
+        ];
+
+        cells[0] != CellState::Empty && cells[0] == cells[1] && cells[1] == cells[2]
+    }
+
+    fn get_winner_from_line_for_state(state: &[[[CellState; 3]; 3]; 3], positions: [(usize, usize, usize); 3]) -> Player {
+        let cell = state[positions[0].0][positions[0].1][positions[0].2];
+        match cell {
+            CellState::Human => Player::Human,
+            CellState::AI => Player::AI,
+            CellState::Empty => panic!("Empty cell shouldn't be a winner"),
+        }
+    }
+
+    fn get_possible_moves_for_state(state: &[[[CellState; 3]; 3]; 3]) -> Vec<(usize, usize, usize)> {
+        let mut moves = Vec::new();
+        for x in 0..3 {
+            for y in 0..3 {
+                for z in 0..3 {
+                    if state[x][y][z] == CellState::Empty {
+                        moves.push((x, y, z));
+                    }
+                }
+            }
+        }
+        moves
     }
 } 

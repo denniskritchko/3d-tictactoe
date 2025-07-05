@@ -1,0 +1,8 @@
+/Users/denniskritchko/3d-tictactoe/target/debug/deps/bevy_render_macros-b5c9ff7659147565.d: /Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_render_macros-0.14.2/src/lib.rs /Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_render_macros-0.14.2/src/as_bind_group.rs /Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_render_macros-0.14.2/src/extract_component.rs /Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_render_macros-0.14.2/src/extract_resource.rs
+
+/Users/denniskritchko/3d-tictactoe/target/debug/deps/libbevy_render_macros-b5c9ff7659147565.dylib: /Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_render_macros-0.14.2/src/lib.rs /Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_render_macros-0.14.2/src/as_bind_group.rs /Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_render_macros-0.14.2/src/extract_component.rs /Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_render_macros-0.14.2/src/extract_resource.rs
+
+/Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_render_macros-0.14.2/src/lib.rs:
+/Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_render_macros-0.14.2/src/as_bind_group.rs:
+/Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_render_macros-0.14.2/src/extract_component.rs:
+/Users/denniskritchko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_render_macros-0.14.2/src/extract_resource.rs:
