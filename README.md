@@ -13,6 +13,8 @@ A 3D tic-tac-toe game built with Rust and Bevy, featuring a rotating cube interf
   - 3D space diagonals (corner to corner)
 - **Modern UI**: Clean interface with game status display
 
+![172EF63E-552D-420C-A1EB-6A514BEACA55_1_105_c](https://github.com/user-attachments/assets/a1cc20fc-4ce1-43a7-a827-6e193d88ac7a)
+
 ## How to Play
 
 ### Controls
