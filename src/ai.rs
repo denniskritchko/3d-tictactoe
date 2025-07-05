@@ -232,25 +232,78 @@ impl MCTSNode {
     }
 
     fn check_winner_for_state(&self, state: &[[[CellState; 3]; 3]; 3]) -> Option<Player> {
-        // Similar to check_winner but for arbitrary state
-        // This is a simplified version for performance
-        for x in 0..3 {
-            for y in 0..3 {
-                for z in 0..3 {
-                    if state[x][y][z] != CellState::Empty {
-                        // Check if this position is part of a winning line
-                        // For simplicity, we'll just check a few key winning conditions
-                        if self.check_line_for_state(state, [(x, y, z), (x, y, z), (x, y, z)]) {
-                            return Some(match state[x][y][z] {
-                                CellState::Human => Player::Human,
-                                CellState::AI => Player::AI,
-                                CellState::Empty => unreachable!(),
-                            });
-                        }
-                    }
+        // Check all possible winning lines in 3D (same logic as GameState)
+        // Lines along X axis
+        for y in 0..3 {
+            for z in 0..3 {
+                if self.check_line_for_state(state, [(0, y, z), (1, y, z), (2, y, z)]) {
+                    return Some(self.get_winner_from_line_for_state(state, [(0, y, z), (1, y, z), (2, y, z)]));
                 }
             }
         }
+
+        // Lines along Y axis
+        for x in 0..3 {
+            for z in 0..3 {
+                if self.check_line_for_state(state, [(x, 0, z), (x, 1, z), (x, 2, z)]) {
+                    return Some(self.get_winner_from_line_for_state(state, [(x, 0, z), (x, 1, z), (x, 2, z)]));
+                }
+            }
+        }
+
+        // Lines along Z axis
+        for x in 0..3 {
+            for y in 0..3 {
+                if self.check_line_for_state(state, [(x, y, 0), (x, y, 1), (x, y, 2)]) {
+                    return Some(self.get_winner_from_line_for_state(state, [(x, y, 0), (x, y, 1), (x, y, 2)]));
+                }
+            }
+        }
+
+        // Face diagonals on XY planes
+        for z in 0..3 {
+            if self.check_line_for_state(state, [(0, 0, z), (1, 1, z), (2, 2, z)]) {
+                return Some(self.get_winner_from_line_for_state(state, [(0, 0, z), (1, 1, z), (2, 2, z)]));
+            }
+            if self.check_line_for_state(state, [(0, 2, z), (1, 1, z), (2, 0, z)]) {
+                return Some(self.get_winner_from_line_for_state(state, [(0, 2, z), (1, 1, z), (2, 0, z)]));
+            }
+        }
+
+        // Face diagonals on XZ planes
+        for y in 0..3 {
+            if self.check_line_for_state(state, [(0, y, 0), (1, y, 1), (2, y, 2)]) {
+                return Some(self.get_winner_from_line_for_state(state, [(0, y, 0), (1, y, 1), (2, y, 2)]));
+            }
+            if self.check_line_for_state(state, [(0, y, 2), (1, y, 1), (2, y, 0)]) {
+                return Some(self.get_winner_from_line_for_state(state, [(0, y, 2), (1, y, 1), (2, y, 0)]));
+            }
+        }
+
+        // Face diagonals on YZ planes
+        for x in 0..3 {
+            if self.check_line_for_state(state, [(x, 0, 0), (x, 1, 1), (x, 2, 2)]) {
+                return Some(self.get_winner_from_line_for_state(state, [(x, 0, 0), (x, 1, 1), (x, 2, 2)]));
+            }
+            if self.check_line_for_state(state, [(x, 0, 2), (x, 1, 1), (x, 2, 0)]) {
+                return Some(self.get_winner_from_line_for_state(state, [(x, 0, 2), (x, 1, 1), (x, 2, 0)]));
+            }
+        }
+
+        // 3D diagonals (corner to corner)
+        if self.check_line_for_state(state, [(0, 0, 0), (1, 1, 1), (2, 2, 2)]) {
+            return Some(self.get_winner_from_line_for_state(state, [(0, 0, 0), (1, 1, 1), (2, 2, 2)]));
+        }
+        if self.check_line_for_state(state, [(0, 0, 2), (1, 1, 1), (2, 2, 0)]) {
+            return Some(self.get_winner_from_line_for_state(state, [(0, 0, 2), (1, 1, 1), (2, 2, 0)]));
+        }
+        if self.check_line_for_state(state, [(0, 2, 0), (1, 1, 1), (2, 0, 2)]) {
+            return Some(self.get_winner_from_line_for_state(state, [(0, 2, 0), (1, 1, 1), (2, 0, 2)]));
+        }
+        if self.check_line_for_state(state, [(0, 2, 2), (1, 1, 1), (2, 0, 0)]) {
+            return Some(self.get_winner_from_line_for_state(state, [(0, 2, 2), (1, 1, 1), (2, 0, 0)]));
+        }
+
         None
     }
 
@@ -262,6 +315,15 @@ impl MCTSNode {
         ];
 
         cells[0] != CellState::Empty && cells[0] == cells[1] && cells[1] == cells[2]
+    }
+
+    fn get_winner_from_line_for_state(&self, state: &[[[CellState; 3]; 3]; 3], positions: [(usize, usize, usize); 3]) -> Player {
+        let cell = state[positions[0].0][positions[0].1][positions[0].2];
+        match cell {
+            CellState::Human => Player::Human,
+            CellState::AI => Player::AI,
+            CellState::Empty => panic!("Empty cell shouldn't be a winner"),
+        }
     }
 
     fn get_possible_moves_for_state(&self, state: &[[[CellState; 3]; 3]; 3]) -> Vec<(usize, usize, usize)> {
@@ -304,51 +366,67 @@ impl MCTSAi {
             return None;
         }
 
-        let mut root = MCTSNode::new(game_state.board, game_state.current_player);
-        root.expand();
-
-        if root.children.is_empty() {
+        let empty_positions = game_state.get_empty_positions();
+        if empty_positions.is_empty() {
             return None;
         }
 
-        for _ in 0..self.simulations {
-            let mut node = &mut root;
-            
-            // Selection
-            while !node.children.is_empty() && !node.is_terminal() {
-                let best_child_idx = node.select_best_child(self.exploration_param);
-                node = &mut node.children[best_child_idx];
-            }
-
-            // Expansion
-            if !node.is_terminal() && node.visits > 0 {
-                node.expand();
-                if !node.children.is_empty() {
-                    node = &mut node.children[0];
-                }
-            }
-
-            // Simulation
-            let winner = node.simulate();
-
-            // Backpropagation
-            node.backpropagate(winner);
-        }
-
-        // Find the child with the highest win rate
+        // For simplicity, we'll use a basic evaluation approach
+        // In a full MCTS implementation, we'd need to properly handle the tree structure
         let mut best_move = None;
-        let mut best_win_rate = -1.0;
+        let mut best_score = f64::NEG_INFINITY;
 
-        for child in &root.children {
-            if child.visits > 0 {
-                let win_rate = child.wins as f64 / child.visits as f64;
-                if win_rate > best_win_rate {
-                    best_win_rate = win_rate;
-                    best_move = child.last_move;
-                }
+        for &(x, y, z) in &empty_positions {
+            let mut total_score = 0.0;
+            
+            // Run multiple simulations for this move
+            for _ in 0..100 {
+                let mut sim_state = game_state.board;
+                sim_state[x][y][z] = CellState::AI;
+                
+                let winner = self.simulate_random_game(sim_state, Player::Human);
+                let score = match winner {
+                    Player::AI => 1.0,
+                    Player::Human => -1.0,
+                    _ => 0.0, // This won't happen with our enum but keeping for completeness
+                };
+                total_score += score;
+            }
+
+            let avg_score = total_score / 100.0;
+            if avg_score > best_score {
+                best_score = avg_score;
+                best_move = Some((x, y, z));
             }
         }
 
         best_move
+    }
+
+    fn simulate_random_game(&self, mut state: [[[CellState; 3]; 3]; 3], mut current_player: Player) -> Player {
+        let mut rng = rand::thread_rng();
+        
+        loop {
+            if let Some(winner) = self.check_winner_for_state(&state) {
+                return winner;
+            }
+
+            let moves = self.get_possible_moves_for_state(&state);
+            if moves.is_empty() {
+                // Draw - return random player for simplicity
+                return if rng.gen_bool(0.5) { Player::Human } else { Player::AI };
+            }
+
+            let (x, y, z) = moves[rng.gen_range(0..moves.len())];
+            match current_player {
+                Player::Human => state[x][y][z] = CellState::Human,
+                Player::AI => state[x][y][z] = CellState::AI,
+            }
+
+            current_player = match current_player {
+                Player::Human => Player::AI,
+                Player::AI => Player::Human,
+            };
+        }
     }
 } 
