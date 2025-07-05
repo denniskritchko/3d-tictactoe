@@ -552,8 +552,9 @@ pub fn animate_moves(
         animation.timer += time.delta_seconds();
         
         if animation.timer >= animation.duration {
-            // Animation complete - set final scale and remove animation component
+            // Animation complete - set final scale and rotation, then remove animation component
             transform.scale = Vec3::splat(animation.target_scale);
+            transform.rotation = Quat::IDENTITY; // Return to original orientation
             commands.entity(entity).remove::<MoveAnimation>();
         } else {
             // Calculate animation progress (0.0 to 1.0)
@@ -567,8 +568,12 @@ pub fn animate_moves(
                 (animation.target_scale - animation.initial_scale) * eased_progress;
             transform.scale = Vec3::splat(current_scale);
             
-            // Add rotation animation
-            let rotation_amount = animation.rotation_speed * animation.timer;
+            // Spin during animation but end at original position
+            // Use a function that spins multiple times but always ends at 0
+            let total_spins = 2.0; // Exactly 2 full rotations
+            let spin_factor = (1.0 - eased_progress); // Decreases from 1 to 0
+            let rotation_amount = progress * total_spins * std::f32::consts::TAU * spin_factor;
+            
             transform.rotation = Quat::from_rotation_y(rotation_amount);
         }
     }
