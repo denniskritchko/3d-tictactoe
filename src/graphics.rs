@@ -496,7 +496,7 @@ pub fn ai_move_system(
 }
 
 pub fn randomize_light_on_reset(
-    game_state: Res<GameState>,
+    _game_state: Res<GameState>,
     mut light_query: Query<(&mut Transform, &mut DirectionalLight), With<GameLight>>,
     keyboard: Res<ButtonInput<KeyCode>>,
 ) {
