@@ -366,7 +366,7 @@ pub fn handle_hover(
             if let Some(entity) = closest_cube {
                 commands.entity(entity).insert(HoveredCube);
                 
-                // Play hover sound (only if no cube was previously hovered)
+                // Play hover sound (only if no cube was previously hovered to avoid spam)
                 if hovered_cubes.is_empty() {
                     sound_events.send(SoundEvent::Hover);
                 }
@@ -640,26 +640,29 @@ pub fn play_sound_effects(
     for event in sound_events.read() {
         match event {
             SoundEvent::MovePlace => {
-                // Play a pleasant "place" sound (mid-high frequency)
-                info!("🔊 Playing move place sound");
-                // In a real implementation, you'd load and play an actual audio file
-                // For now, we'll just log the sound event
+                // Play a pleasant "place" sound (mid-high frequency, satisfying click)
+                info!("🔊 Move placed - playing satisfying placement sound");
+                // Future: Play actual audio file like "click.ogg" or generate 800Hz tone
             }
             SoundEvent::Hover => {
-                // Play a subtle hover sound (high frequency, quiet)
-                info!("🔊 Playing hover sound");
+                // Play a subtle hover sound (high frequency, quiet, brief)
+                info!("🔊 Cube hovered - playing subtle highlight sound");
+                // Future: Play soft "tick.ogg" or generate 1200Hz brief tone
             }
             SoundEvent::Win => {
-                // Play a victory sound (ascending notes)
-                info!("🎉 Playing win sound");
+                // Play a victory sound (ascending notes, celebratory)
+                info!("🎉 Victory! - playing win fanfare");
+                // Future: Play "victory.ogg" or generate ascending note sequence
             }
             SoundEvent::Lose => {
-                // Play a defeat sound (descending notes)
-                info!("😞 Playing lose sound");
+                // Play a defeat sound (descending notes, sympathetic)
+                info!("😞 Defeat - playing lose sound");
+                // Future: Play "defeat.ogg" or generate descending note sequence
             }
             SoundEvent::Reset => {
-                // Play a reset sound (neutral beep)
-                info!("🔄 Playing reset sound");
+                // Play a reset sound (neutral beep, fresh start)
+                info!("🔄 Game reset - playing refresh sound");
+                // Future: Play "reset.ogg" or generate neutral 600Hz tone
             }
         }
     }
