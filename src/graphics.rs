@@ -571,7 +571,7 @@ pub fn animate_moves(
             // Spin during animation but end at original position
             // Use a function that spins multiple times but always ends at 0
             let total_spins = 2.0; // Exactly 2 full rotations
-            let spin_factor = (1.0 - eased_progress); // Decreases from 1 to 0
+            let spin_factor = 1.0 - eased_progress; // Decreases from 1 to 0
             let rotation_amount = progress * total_spins * std::f32::consts::TAU * spin_factor;
             
             transform.rotation = Quat::from_rotation_y(rotation_amount);
