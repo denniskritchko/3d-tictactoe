@@ -106,6 +106,27 @@ pub struct HoveredCube;
 pub struct GameLight;
 
 #[derive(Component)]
+pub struct MoveAnimation {
+    pub timer: f32,
+    pub duration: f32,
+    pub initial_scale: f32,
+    pub target_scale: f32,
+    pub rotation_speed: f32,
+}
+
+impl MoveAnimation {
+    pub fn new() -> Self {
+        Self {
+            timer: 0.0,
+            duration: 0.5, // Animation duration in seconds
+            initial_scale: 0.1,
+            target_scale: 1.0,
+            rotation_speed: 8.0, // Rotations per second
+        }
+    }
+}
+
+#[derive(Component)]
 pub struct CameraController {
     pub sensitivity: f32,
     pub distance: f32,
@@ -406,12 +427,42 @@ pub fn rotate_camera(
     }
 }
 
+pub fn trigger_move_animations(
+    mut commands: Commands,
+    mut cube_query: Query<(Entity, &mut Transform, &CubeMarker), Without<MoveAnimation>>,
+    game_state: Res<GameState>,
+) {
+    if !game_state.is_changed() {
+        return;
+    }
+    
+    // Check all cubes for newly placed pieces
+    for (entity, mut transform, cube_marker) in cube_query.iter_mut() {
+        let cell_state = game_state.board[cube_marker.x][cube_marker.y][cube_marker.z];
+        
+        // If this cube was just placed (not empty and game state changed), start animation
+        if cell_state != CellState::Empty {
+            // Check if this cube was the last move made
+            if let Some(last_move) = game_state.last_move {
+                if (cube_marker.x, cube_marker.y, cube_marker.z) == last_move {
+                    // Start animation from small scale
+                    transform.scale = Vec3::splat(0.1);
+                    transform.rotation = Quat::IDENTITY;
+                    
+                    // Add animation component
+                    commands.entity(entity).insert(MoveAnimation::new());
+                }
+            }
+        }
+    }
+}
+
 pub fn update_cube_materials(
-    mut cube_query: Query<(&mut Handle<StandardMaterial>, &CubeMarker, Option<&HoveredCube>)>,
+    mut cube_query: Query<(&mut Handle<StandardMaterial>, &CubeMarker, Option<&HoveredCube>, Option<&MoveAnimation>)>,
     game_state: Res<GameState>,
     materials: Res<CubeMaterials>,
 ) {
-    for (mut material, cube_marker, hovered) in cube_query.iter_mut() {
+    for (mut material, cube_marker, hovered, _animating) in cube_query.iter_mut() {
         let cell_state = game_state.board[cube_marker.x][cube_marker.y][cube_marker.z];
         
         *material = match cell_state {
@@ -489,6 +540,52 @@ pub fn ai_move_system(
 
     if let Some((x, y, z)) = game_state.ai.get_best_move(&game_state) {
         game_state.make_move(x, y, z);
+    }
+}
+
+pub fn animate_moves(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut cube_query: Query<(Entity, &mut Transform, &mut MoveAnimation, &CubeMarker)>,
+) {
+    for (entity, mut transform, mut animation, _cube_marker) in cube_query.iter_mut() {
+        animation.timer += time.delta_seconds();
+        
+        if animation.timer >= animation.duration {
+            // Animation complete - set final scale and remove animation component
+            transform.scale = Vec3::splat(animation.target_scale);
+            commands.entity(entity).remove::<MoveAnimation>();
+        } else {
+            // Calculate animation progress (0.0 to 1.0)
+            let progress = animation.timer / animation.duration;
+            
+            // Smooth easing function (ease-out cubic)
+            let eased_progress = 1.0 - (1.0 - progress).powi(3);
+            
+            // Interpolate scale
+            let current_scale = animation.initial_scale + 
+                (animation.target_scale - animation.initial_scale) * eased_progress;
+            transform.scale = Vec3::splat(current_scale);
+            
+            // Add rotation animation
+            let rotation_amount = animation.rotation_speed * animation.timer;
+            transform.rotation = Quat::from_rotation_y(rotation_amount);
+        }
+    }
+}
+
+pub fn clear_animations_on_reset(
+    mut commands: Commands,
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut cube_query: Query<(Entity, &mut Transform, &CubeMarker), With<MoveAnimation>>,
+) {
+    if keyboard.just_pressed(KeyCode::KeyR) {
+        // Clear all animations and reset transforms
+        for (entity, mut transform, _) in cube_query.iter_mut() {
+            transform.scale = Vec3::ONE;
+            transform.rotation = Quat::IDENTITY;
+            commands.entity(entity).remove::<MoveAnimation>();
+        }
     }
 }
 

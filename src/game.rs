@@ -22,6 +22,7 @@ pub struct GameState {
     pub winner: Option<Player>,
     pub ai: MCTSAi,
     pub selected_cube: Option<(usize, usize, usize)>,
+    pub last_move: Option<(usize, usize, usize)>,
 }
 
 impl Default for GameState {
@@ -33,6 +34,7 @@ impl Default for GameState {
             winner: None,
             ai: MCTSAi::new(),
             selected_cube: None,
+            last_move: None,
         }
     }
 }
@@ -47,6 +49,9 @@ impl GameState {
             Player::Human => self.board[x][y][z] = CellState::Human,
             Player::AI => self.board[x][y][z] = CellState::AI,
         }
+
+        // Track the last move for animations
+        self.last_move = Some((x, y, z));
 
         if self.check_winner() {
             self.game_over = true;
@@ -171,5 +176,6 @@ impl GameState {
         self.game_over = false;
         self.winner = None;
         self.selected_cube = None;
+        self.last_move = None;
     }
 } 
