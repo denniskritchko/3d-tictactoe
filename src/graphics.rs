@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy::input::mouse::MouseMotion;
-use bevy::window::CursorGrabMode;
 use crate::game::{GameState, Player, CellState};
 
 #[derive(Component)]
