@@ -26,6 +26,7 @@ fn main() {
             update_cube_materials,
             check_game_over,
             ai_move_system,
+            randomize_light_on_reset,
         ))
         .run();
 } 

@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy::input::mouse::MouseMotion;
+use rand::Rng;
 use crate::game::{GameState, Player, CellState};
 
 // Helper function for ray-box intersection
@@ -59,6 +60,38 @@ fn ray_box_intersection(ray_origin: Vec3, ray_dir: Vec3, box_min: Vec3, box_max:
     }
 }
 
+// Generate a random light position that provides good illumination
+fn generate_random_light_position() -> Vec3 {
+    let mut rng = rand::thread_rng();
+    
+    // Generate random spherical coordinates around the cube
+    let distance: f32 = rng.gen_range(6.0..12.0); // Distance from center
+    let azimuth: f32 = rng.gen_range(0.0..std::f32::consts::TAU); // Rotation around Y axis
+    let elevation: f32 = rng.gen_range(0.3..1.2); // Angle from horizontal (avoid too low or too high)
+    
+    // Convert spherical to cartesian coordinates
+    let x = distance * elevation.cos() * azimuth.cos();
+    let y = distance * elevation.sin() + rng.gen_range(2.0..6.0) as f32; // Add some height bias
+    let z = distance * elevation.cos() * azimuth.sin();
+    
+    Vec3::new(x, y, z)
+}
+
+// Generate a random light color with slight warm/cool variations
+fn generate_random_light_color() -> Color {
+    let mut rng = rand::thread_rng();
+    
+    // Create subtle color variations - mostly white but with slight tints
+    let base_intensity: f32 = 0.95;
+    let variation: f32 = 0.1;
+    
+    let r = (base_intensity + rng.gen_range(-variation..variation)).clamp(0.0, 1.0);
+    let g = (base_intensity + rng.gen_range(-variation..variation)).clamp(0.0, 1.0);
+    let b = (base_intensity + rng.gen_range(-variation..variation)).clamp(0.0, 1.0);
+    
+    Color::srgb(r, g, b)
+}
+
 #[derive(Component)]
 pub struct CubeMarker {
     pub x: usize,
@@ -68,6 +101,9 @@ pub struct CubeMarker {
 
 #[derive(Component)]
 pub struct HoveredCube;
+
+#[derive(Component)]
+pub struct GameLight;
 
 #[derive(Component)]
 pub struct CameraController {
@@ -164,17 +200,22 @@ pub fn setup_scene(
         },
     ));
 
-    // Light
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
-            color: Color::WHITE,
-            illuminance: 3000.0,
-            shadows_enabled: true,
+    // Random light position and color for variety
+    let light_position = generate_random_light_position();
+    let light_color = generate_random_light_color();
+    commands.spawn((
+        DirectionalLightBundle {
+            directional_light: DirectionalLight {
+                color: light_color,
+                illuminance: 3000.0,
+                shadows_enabled: true,
+                ..default()
+            },
+            transform: Transform::from_translation(light_position).looking_at(Vec3::ZERO, Vec3::Y),
             ..default()
         },
-        transform: Transform::from_xyz(4.0, 8.0, 4.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
+        GameLight,
+    ));
 
     // Ambient light
     commands.insert_resource(AmbientLight {
@@ -185,7 +226,7 @@ pub fn setup_scene(
     // UI Text
     commands.spawn(
         TextBundle::from_section(
-            "3D Tic-Tac-Toe\nHover over cubes to highlight them\nClick highlighted cubes to play!\nWASD + Mouse to rotate camera\nR to reset game",
+            "3D Tic-Tac-Toe\nHover over cubes to highlight them\nClick highlighted cubes to play!\nWASD + Mouse to rotate camera\nR to reset game + randomize lighting",
             TextStyle {
                 font_size: 20.0,
                 color: Color::WHITE,
@@ -451,5 +492,26 @@ pub fn ai_move_system(
 
     if let Some((x, y, z)) = game_state.ai.get_best_move(&game_state) {
         game_state.make_move(x, y, z);
+    }
+}
+
+pub fn randomize_light_on_reset(
+    game_state: Res<GameState>,
+    mut light_query: Query<(&mut Transform, &mut DirectionalLight), With<GameLight>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+) {
+    // Check if the game was just reset
+    if keyboard.just_pressed(KeyCode::KeyR) {
+        // Randomize light position and color
+        let new_position = generate_random_light_position();
+        let new_color = generate_random_light_color();
+        
+        for (mut light_transform, mut directional_light) in light_query.iter_mut() {
+            light_transform.translation = new_position;
+            light_transform.look_at(Vec3::ZERO, Vec3::Y);
+            directional_light.color = new_color;
+        }
+        
+        info!("Light randomized - Position: {:?}, Color: {:?}", new_position, new_color);
     }
 } 
