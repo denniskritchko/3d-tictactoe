@@ -403,9 +403,6 @@ pub fn rotate_camera(
             transform.translation = Vec3::new(x, y, z);
             transform.look_at(Vec3::ZERO, Vec3::Y);
         }
-
-        // Zoom with scroll wheel
-        // (This would require scroll events, keeping simple for now)
     }
 }
 
@@ -480,11 +477,11 @@ pub fn ai_move_system(
         return;
     }
 
-    // Add a delay to show AI is thinking
+    // AI delay
     static mut AI_TIMER: f32 = 0.0;
     unsafe {
         AI_TIMER += time.delta_seconds();
-        if AI_TIMER < 1.5 { // Longer delay to show AI is thinking harder
+        if AI_TIMER < 1.5 {
             return;
         }
         AI_TIMER = 0.0;
