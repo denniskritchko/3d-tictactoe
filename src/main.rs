@@ -18,6 +18,7 @@ fn main() {
             ..default()
         }))
         .init_resource::<GameState>()
+        .add_event::<SoundEvent>()
         .add_systems(Startup, setup_scene)
         .add_systems(Update, (
             handle_hover,
@@ -30,6 +31,7 @@ fn main() {
             check_game_over,
             ai_move_system,
             randomize_light_on_reset,
+            play_sound_effects,
         ))
         .run();
 } 

@@ -148,6 +148,20 @@ pub struct GameMeshes {
     pub cube: Handle<Mesh>,
 }
 
+#[derive(Event)]
+pub enum SoundEvent {
+    MovePlace,
+    Hover,
+    Win,
+    Lose,
+    Reset,
+}
+
+#[derive(Resource)]
+pub struct GameSounds {
+    pub enabled: bool,
+}
+
 pub fn setup_scene(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -283,6 +297,12 @@ pub fn setup_scene(
 
     commands.insert_resource(cube_materials);
     commands.insert_resource(game_meshes);
+    
+    // Initialize sound system
+    let game_sounds = GameSounds {
+        enabled: true,
+    };
+    commands.insert_resource(game_sounds);
 }
 
 #[derive(Component)]
@@ -295,6 +315,7 @@ pub fn handle_hover(
     hovered_cubes: Query<Entity, With<HoveredCube>>,
     mut commands: Commands,
     game_state: Res<GameState>,
+    mut sound_events: EventWriter<SoundEvent>,
 ) {
     if game_state.game_over || game_state.current_player != Player::Human {
         // Remove all hover highlights when it's not the player's turn
@@ -344,6 +365,11 @@ pub fn handle_hover(
             // Add hover to the closest cube
             if let Some(entity) = closest_cube {
                 commands.entity(entity).insert(HoveredCube);
+                
+                // Play hover sound (only if no cube was previously hovered)
+                if hovered_cubes.is_empty() {
+                    sound_events.send(SoundEvent::Hover);
+                }
             }
         }
     } else {
@@ -359,9 +385,11 @@ pub fn handle_input(
     keyboard: Res<ButtonInput<KeyCode>>,
     hovered_cubes: Query<&CubeMarker, With<HoveredCube>>,
     mut game_state: ResMut<GameState>,
+    mut sound_events: EventWriter<SoundEvent>,
 ) {
     if keyboard.just_pressed(KeyCode::KeyR) {
         game_state.reset();
+        sound_events.send(SoundEvent::Reset);
         return;
     }
 
@@ -431,6 +459,7 @@ pub fn trigger_move_animations(
     mut commands: Commands,
     mut cube_query: Query<(Entity, &mut Transform, &CubeMarker), Without<MoveAnimation>>,
     game_state: Res<GameState>,
+    mut sound_events: EventWriter<SoundEvent>,
 ) {
     if !game_state.is_changed() {
         return;
@@ -451,6 +480,9 @@ pub fn trigger_move_animations(
                     
                     // Add animation component
                     commands.entity(entity).insert(MoveAnimation::new());
+                    
+                    // Play move sound
+                    sound_events.send(SoundEvent::MovePlace);
                 }
             }
         }
@@ -484,6 +516,7 @@ pub fn update_cube_materials(
 pub fn check_game_over(
     game_state: Res<GameState>,
     mut status_text_query: Query<&mut Text, With<GameStatusText>>,
+    mut sound_events: EventWriter<SoundEvent>,
 ) {
     if !game_state.is_changed() {
         return;
@@ -495,10 +528,12 @@ pub fn check_game_over(
                 Some(Player::Human) => {
                     text.sections[0].value = "You win! Press R to restart".to_string();
                     text.sections[0].style.color = Color::srgb(0.2, 0.7, 0.2);
+                    sound_events.send(SoundEvent::Win);
                 }
                 Some(Player::AI) => {
                     text.sections[0].value = "AI wins! Press R to restart".to_string();
                     text.sections[0].style.color = Color::srgb(0.7, 0.2, 0.2);
+                    sound_events.send(SoundEvent::Lose);
                 }
                 None => {
                     text.sections[0].value = "It's a draw! Press R to restart".to_string();
@@ -590,6 +625,42 @@ pub fn clear_animations_on_reset(
             transform.scale = Vec3::ONE;
             transform.rotation = Quat::IDENTITY;
             commands.entity(entity).remove::<MoveAnimation>();
+        }
+    }
+}
+
+pub fn play_sound_effects(
+    mut sound_events: EventReader<SoundEvent>,
+    sounds: Res<GameSounds>,
+) {
+    if !sounds.enabled {
+        return;
+    }
+    
+    for event in sound_events.read() {
+        match event {
+            SoundEvent::MovePlace => {
+                // Play a pleasant "place" sound (mid-high frequency)
+                info!("🔊 Playing move place sound");
+                // In a real implementation, you'd load and play an actual audio file
+                // For now, we'll just log the sound event
+            }
+            SoundEvent::Hover => {
+                // Play a subtle hover sound (high frequency, quiet)
+                info!("🔊 Playing hover sound");
+            }
+            SoundEvent::Win => {
+                // Play a victory sound (ascending notes)
+                info!("🎉 Playing win sound");
+            }
+            SoundEvent::Lose => {
+                // Play a defeat sound (descending notes)
+                info!("😞 Playing lose sound");
+            }
+            SoundEvent::Reset => {
+                // Play a reset sound (neutral beep)
+                info!("🔄 Playing reset sound");
+            }
         }
     }
 }
